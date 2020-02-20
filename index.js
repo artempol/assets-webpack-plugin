@@ -9,6 +9,28 @@ var isSourceMap = require('./lib/isSourceMap')
 var createQueuedWriter = require('./lib/output/createQueuedWriter')
 var createOutputWriter = require('./lib/output/createOutputWriter')
 
+var getHashCode = function (str) {
+  var hash = 0
+  var len = str.length
+
+  if (len === 0) return hash
+
+  for (var i = 0; i < len; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i)
+    hash |= 0 // Convert to 32bit integer
+  }
+
+  return hash
+}
+
+var getServerNumber = function (resourceUrl, serverCount) {
+  var INT_32_MAX_VAL = 2147483647
+  var hash = Math.abs(getHashCode(resourceUrl))
+  var hashPosition = hash / INT_32_MAX_VAL
+
+  return Math.round((serverCount - 1) * hashPosition)
+}
+
 function AssetsWebpackPlugin (options) {
   this.options = _.merge({}, {
     filename: 'webpack-assets.json',
@@ -20,7 +42,8 @@ function AssetsWebpackPlugin (options) {
     fileTypes: ['js', 'css'],
     includeAllFileTypes: true,
     keepInMemory: false,
-    integrity: false
+    integrity: false,
+    hosts: []
   }, options)
   this.writer = createQueuedWriter(createOutputWriter(this.options))
 }
@@ -58,6 +81,7 @@ AssetsWebpackPlugin.prototype = {
       //     'index-bundle-42b6e1ec4fa8c5f0303e.js.map' ]
       // }
 
+      var hosts = Array.isArray(self.options.hosts) ? self.options.hosts : []
       var seenAssets = {}
       var chunks
 
@@ -93,9 +117,11 @@ AssetsWebpackPlugin.prototype = {
             var type = typeof typeMap[typeName]
             var compilationAsset = compilation.assets[asset]
             var integrity = compilationAsset && compilationAsset.integrity
+            var prepend = hosts.length !== 0 ? '//' + hosts[getServerNumber(asset, hosts.length)] : ''
+            var prependedPath = prepend + combinedPath
 
             if (type === 'undefined') {
-              typeMap[typeName] = combinedPath
+              typeMap[typeName] = prependedPath
 
               if (self.options.integrity && integrity) {
                 typeMap[typeName + 'Integrity'] = integrity
@@ -104,7 +130,7 @@ AssetsWebpackPlugin.prototype = {
               if (type === 'string') {
                 typeMap[typeName] = [typeMap[typeName]]
               }
-              typeMap[typeName].push(combinedPath)
+              typeMap[typeName].push(prependedPath)
             }
 
             added = true
