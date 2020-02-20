@@ -297,6 +297,35 @@ If the 'entrypoints' option is given, the output will be limited to the entrypoi
 new AssetsPlugin({entrypoints: true})
 ```
 
+#### `hosts`
+
+Optional. `[]` by default.
+
+If the 'hosts' option is not empty, the output will be prepended with given hosts.
+
+```js
+new AssetsPlugin({
+  hosts: [
+    'cs1.hostname.local',
+    'cs2.hostname.local',
+    'cs3.hostname.local'
+  ]
+})
+```
+
+Output will now look like this:
+
+```json
+{
+  "main": {
+    "js": "//cs1.hostname.local/bundle.js"
+  },
+  "vendors~main": {
+    "js": "//cs2.hostname.local/1.bundle.js"
+  }
+}
+```
+
 ### Using in multi-compiler mode
 
 If you use webpack multi-compiler mode and want your assets written to a single file,
