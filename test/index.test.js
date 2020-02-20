@@ -1,20 +1,17 @@
-/*jshint expr: true*/
+/* eslint-env mocha */
 
-var path = require('path');
-var webpack = require('webpack');
-var ExtractTextPlugin = require('extract-text-webpack-plugin');
-var rm_rf = require('rimraf');
-var Plugin = require('../index.js');
+var path = require('path')
+var rmRf = require('rimraf')
+var Plugin = require('../index.js')
 
-var OUTPUT_DIR = path.join(__dirname, '../tmp');
-var expectOutput = require('./utils/expectOutput')(OUTPUT_DIR);
-
+var OUTPUT_DIR = path.join(__dirname, '../tmp')
+var expectOutput = require('./utils/expectOutput')(OUTPUT_DIR)
+var MiniCssExtractPlugin = require('mini-css-extract-plugin')
 
 describe('Plugin', function () {
-
   beforeEach(function (done) {
-    rm_rf(OUTPUT_DIR, done);
-  });
+    rmRf(OUTPUT_DIR, done)
+  })
 
   it('generates a default file for a single entry point', function (done) {
     var webpackConfig = {
@@ -26,22 +23,22 @@ describe('Plugin', function () {
       plugins: [new Plugin({
         path: 'tmp'
       })]
-    };
+    }
 
     var expected = {
       main: {
         js: 'index-bundle.js'
       }
-    };
-    expected = JSON.stringify(expected);
+    }
+    expected = JSON.stringify(expected)
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('generates a default file with multiple entry points', function (done) {
     var webpackConfig = {
@@ -53,8 +50,8 @@ describe('Plugin', function () {
         path: OUTPUT_DIR,
         filename: '[name]-bundle.js'
       },
-      plugins: [new Plugin({path: 'tmp'})]
-    };
+      plugins: [new Plugin({ path: 'tmp' })]
+    }
 
     var expected = {
       one: {
@@ -63,18 +60,17 @@ describe('Plugin', function () {
       two: {
         js: 'two-bundle.js'
       }
-    };
+    }
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('allows you to specify your own filename', function (done) {
-
     var webpackConfig = {
       entry: path.join(__dirname, 'fixtures/one.js'),
       output: {
@@ -85,25 +81,24 @@ describe('Plugin', function () {
         filename: 'foo.json',
         path: 'tmp'
       })]
-    };
+    }
 
     var expected = {
       main: {
         js: 'index-bundle.js'
       }
-    };
+    }
 
     var args = {
       config: webpackConfig,
       expected: expected,
       outputFile: 'foo.json'
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('skips source maps', function (done) {
-
     var webpackConfig = {
       devtool: 'sourcemap',
       entry: path.join(__dirname, 'fixtures/one.js'),
@@ -111,67 +106,66 @@ describe('Plugin', function () {
         path: OUTPUT_DIR,
         filename: 'index-bundle.js'
       },
-      plugins: [new Plugin({path: 'tmp'})]
-    };
+      plugins: [new Plugin({ path: 'tmp' })]
+    }
 
     var expected = {
       main: {
         js: 'index-bundle.js'
       }
-    };
+    }
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('handles hashes in bundle filenames', function (done) {
-
     var webpackConfig = {
       entry: path.join(__dirname, 'fixtures/one.js'),
       output: {
         path: OUTPUT_DIR,
         filename: 'index-bundle-[hash].js'
       },
-      plugins: [new Plugin({path: 'tmp'})]
-    };
+      plugins: [new Plugin({ path: 'tmp' })]
+    }
 
-    var expected = /{"main":{"js":"index-bundle-[0-9a-f]+\.js"}}/;
+    var expected = /{"main":{"js":"index-bundle-[0-9a-f]+\.js"}}/
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('handles hashes in a different position', function (done) {
-
     var webpackConfig = {
       entry: path.join(__dirname, 'fixtures/one.js'),
       output: {
         path: OUTPUT_DIR,
         filename: '[name].js?[hash]'
       },
-      plugins: [new Plugin({path: 'tmp'})]
-    };
+      plugins: [new Plugin({ path: 'tmp' })]
+    }
 
-    var expected = /{"main":{"js":"main\.js\?[0-9a-f]+"}}/;
+    var expected = /{"main":{"js":"main\.js\?[0-9a-f]+"}}/
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
-  it('works with ExtractTextPlugin for stylesheets', function (done) {
-
+  it('works with ExtractTextPlugin for multiple stylesheets', function (done) {
+    var extractTextPlugin1 = new MiniCssExtractPlugin({ filename: '[name]-bundle1.css', chunkFilename: '[id].css' })
+    var extractTextPlugin2 = new MiniCssExtractPlugin({ filename: '[name]-bundle2.css', chunkFilename: '[id].css' })
     var webpackConfig = {
       entry: {
         one: path.join(__dirname, 'fixtures/one.js'),
@@ -183,17 +177,31 @@ describe('Plugin', function () {
         filename: '[name]-bundle.js'
       },
       module: {
-        loaders: [
-                {test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader')}
+        rules: [
+          {
+            test: /1\.css$/,
+            use: [
+              MiniCssExtractPlugin.loader,
+              'css-loader'
+            ]
+          },
+          {
+            test: /2\.css$/,
+            use: [
+              MiniCssExtractPlugin.loader,
+              'css-loader'
+            ]
+          }
         ]
       },
       plugins: [
-        new ExtractTextPlugin('[name]-bundle.css', {allChunks: true}),
+        extractTextPlugin1,
+        extractTextPlugin2,
         new Plugin({
           path: 'tmp'
         })
       ]
-    };
+    }
 
     var expected = {
       one: {
@@ -203,21 +211,20 @@ describe('Plugin', function () {
         js: 'two-bundle.js'
       },
       styles: {
-        js:  'styles-bundle.js',
-        css: 'styles-bundle.css'
+        js: 'styles-bundle.js',
+        css: ['styles-bundle1.css', 'styles-bundle2.css']
       }
-    };
+    }
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('includes full publicPath', function (done) {
-
     var webpackConfig = {
       entry: path.join(__dirname, 'fixtures/one.js'),
       output: {
@@ -225,21 +232,20 @@ describe('Plugin', function () {
         publicPath: '/public/path/[hash]/',
         filename: 'index-bundle.js'
       },
-      plugins: [new Plugin({path: 'tmp'})]
-    };
+      plugins: [new Plugin({ path: 'tmp' })]
+    }
 
-    var expected = new RegExp('/public/path/[0-9a-f]+/index-bundle.js', 'i');
+    var expected = new RegExp('/public/path/[0-9a-f]+/index-bundle.js', 'i')
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
   it('doesn\'t include full publicPath', function (done) {
-
     var webpackConfig = {
       entry: path.join(__dirname, 'fixtures/one.js'),
       output: {
@@ -251,53 +257,56 @@ describe('Plugin', function () {
         path: 'tmp',
         fullPath: false
       })]
-    };
+    }
 
     var expected = {
       main: {
         js: 'index-bundle.js'
       }
-    };
+    }
 
-    expected = JSON.stringify(expected);
+    expected = JSON.stringify(expected)
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-  });
+    expectOutput(args, done)
+  })
 
-  it('works with CommonChunksPlugin', function (done) {
+  it('allows injection of metadata', function (done) {
     var webpackConfig = {
-      entry: {
-        one: path.join(__dirname, 'fixtures/common-chunks/one.js'),
-        two: path.join(__dirname, 'fixtures/common-chunks/two.js')
-      },
+      entry: path.join(__dirname, 'fixtures/one.js'),
       output: {
         path: OUTPUT_DIR,
-        filename: '[name].js'
+        filename: 'index-bundle.js'
       },
-      plugins: [
-        new webpack.optimize.CommonsChunkPlugin({name: 'common'}),
-        new Plugin({path: 'tmp'})
-      ]
-    };
+      plugins: [new Plugin({
+        path: 'tmp',
+        metadata: {
+          foo: 'bar',
+          baz: 'buz'
+        }
+      })]
+    }
 
     var expected = {
-      one: {js: 'one.js'},
-      two: {js: 'two.js'},
-      common: {js: 'common.js'}
-    };
+      main: {
+        js: 'index-bundle.js'
+      },
+      metadata: {
+        foo: 'bar',
+        baz: 'buz'
+      }
+    }
+    expected = JSON.stringify(expected)
 
     var args = {
       config: webpackConfig,
       expected: expected
-    };
+    }
 
-    expectOutput(args, done);
-
-  });
-
-});
+    expectOutput(args, done)
+  })
+})
