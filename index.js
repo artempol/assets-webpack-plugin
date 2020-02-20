@@ -7,6 +7,25 @@ var isSourceMap = require('./lib/isSourceMap');
 var createQueuedWriter = require('./lib/output/createQueuedWriter');
 var createOutputWriter = require('./lib/output/createOutputWriter');
 
+var getHashCode = function (str) {
+  var hash = 0, i, chr, len;
+  if (str.length == 0) return hash;
+
+  for (i = 0, len = str.length; i < len; i++) {
+    chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+
+  return hash;
+};
+
+var getServerNumber = function (resourceUrl, serverCount) {
+  var hash = Math.abs(getHashCode(resourceUrl));
+  var hashPosition = hash / 2147483647;
+
+  return Math.round((serverCount - 1) * hashPosition);
+};
 
 function AssetsWebpackPlugin (options) {
   this.options = merge({}, {
@@ -63,7 +82,13 @@ AssetsWebpackPlugin.prototype = {
           }
 
           var typeName = getAssetKind(options, asset);
-          typeMap[typeName] = assetPath + asset;
+
+          if (Array.isArray(self.options.hosts) && self.options.hosts.length) {
+            var host = self.options.hosts[getServerNumber(asset, self.options.hosts.length)];
+            typeMap[typeName] = '//' + host + assetPath + asset;
+          } else {
+            typeMap[typeName] = assetPath + asset;
+          }
 
           return typeMap;
         }, {});
